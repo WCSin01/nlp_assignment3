@@ -1,4 +1,3 @@
-import pickle
 from forward_backward_hmm import seed_matrices
 from process_data import process_conllu
 from forward_backward_hmm import forward_backward

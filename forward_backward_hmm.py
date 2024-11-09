@@ -51,10 +51,14 @@ def forward_backward(
 
         # one outer loop is one iteration through the whole dataset
         for i in range(max_iter):
-            # encode word only when required to reduce memory usage
-            p_j_at_t, xi = forward_backward_expect(dataset.sentences, dataset.ohe, log_pi, log_transition, log_emission_T)
+            for j, sentence in enumerate(dataset.sentences):
+                # encode word only when required to reduce memory usage
+                p_j_at_t, xi = forward_backward_expect(sentence, dataset.ohe, log_pi, log_transition, log_emission_T)
+                np.save(f"checkpoints/p_j_at_t/sentence{j}", p_j_at_t)
+                np.save(f"checkpoints/xi/sentence{j}", xi)
+            # TODO
             new_pi, new_transition, new_emission_T = forward_backward_max(
-                dataset.sentences, dataset.ohe, dataset.vocabulary_size, p_j_at_t, xi)
+                sentence, dataset.ohe, dataset.vocabulary_size)
             assert np.allclose(np.sum(new_transition, axis=1), 1)
             assert np.allclose(np.sum(new_emission_T, axis=0), 1)
 
@@ -103,9 +107,6 @@ def log_forward(
         # 1 x POS @ POS x POS = 1 x POS
         log_p_forward[t] = log_mat_mul(log_p_forward[t - 1], log_transition) + \
                            log_mat_mul(ohe.encode_row_log(sentence[t]), log_emission_T)
-
-        save_checkpoint("log_p_forward", log_p_forward, t, T)
-
     return log_p_forward
 
 
@@ -143,9 +144,6 @@ def log_backward(
             ),
             log_transition
         ) + log_p_backward[t + 1, :]
-
-        save_checkpoint("log_p_backward", log_p_backward, t, T)
-
     return log_p_backward
 
 
@@ -198,8 +196,6 @@ def expected_state_transition_count(
     #         for j in range(POS):
     #             log_xi[t, i, j] = log_forward_mat[t, 0, i] + log_transition[i, j] +\
     #                               b_j[j] + log_backward_mat[t+1, 0, j]
-
-        save_checkpoint("log_xi", log_xi, t, T)
 
     # normalize row
     xi = log_normalize(log_xi, axis=2)
@@ -282,14 +278,3 @@ def seed_matrices(n_hidden: int, n_observed: int, seed: int = None) -> tuple[np.
     emission = np.random.rand(n_hidden, n_observed)
     emission = emission / np.expand_dims(emission.sum(axis=1), axis=1)
     return pi, transition, emission
-
-
-def save_checkpoint(name: str, value: np.ndarray, t: int, T: int):
-    # 30 seconds for forward
-    if t % 3000 == 0:
-        status = f"{name}, token #: {t + 1}/{T}"
-        print(status)
-        f = open(f"checkpoints/checkpoint.txt", "a")
-        f.write(status)
-        f.close()
-        np.save(f"checkpoints/{name}", value)
