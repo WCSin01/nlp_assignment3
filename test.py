@@ -77,30 +77,38 @@ import pickle
 #   1.66573855e-02, 1.52852873e-01, 7.46425709e-02, 1.27271099e-01,
 #   3.61979532e-02, 1.19196782e-02, 4.98068922e-03, 5.64772503e-02,
 #   4.29254495e-02]))
+from numeric import log_normalize
 from process_data import process_conllu, OneHot
 
 # POS = 17, V = 44390
 # dataset = process_conllu("ptb-train.conllu")
 # print(len(dataset.upos))
 
-f = open("checkpoints/word_to_one_hot.pkl", "rb")
-word_to_one_hot = pickle.load(f)
-# ohe = OneHot(word_to_one_hot)
-dataset = process_conllu("ptb-train.conllu", word_to_one_hot)
-ohe = dataset.ohe
-transition = np.load("checkpoints/transition.npy")
-# V x POS
-emission_T = np.load("checkpoints/emission_T.npy")
-assert np.allclose(emission_T.sum(axis=0), 1)
-
-for sentence in dataset.sentences:
-    for token in sentence:
-        u = emission_T[ohe.get_index(token)]
-        argmax_u = np.argmax(u)
-        print(argmax_u)
-    break
+# f = open("checkpoints/word_to_one_hot.pkl", "rb")
+# word_to_one_hot = pickle.load(f)
+# # ohe = OneHot(word_to_one_hot)
+# dataset = process_conllu("ptb-train.conllu", word_to_one_hot)
+# ohe = dataset.ohe
+# transition = np.load("checkpoints/transition.npy")
+# # V x POS
+# emission_T = np.load("checkpoints/emission_T.npy")
+# assert np.allclose(emission_T.sum(axis=0), 1)
+#
+# for sentence in dataset.sentences:
+#     for token in sentence:
+#         u = emission_T[ohe.get_index(token)]
+#         argmax_u = np.argmax(u)
+#         print(argmax_u)
+#     break
 
 # print(np.argsort(transition[argmax_u])[::-1])
 # w = emission_T[ohe.get_index("of")]
 # print(w)
 
+# a = np.random.rand(3, 4)
+# d = np.log(a)
+# d[0, 0] = -np.inf
+# b = log_normalize(np.ma.masked_invalid(d), axis=0)
+# print(b)
+# c = a / np.expand_dims(np.sum(a, axis=0), axis=0)
+# print(c)

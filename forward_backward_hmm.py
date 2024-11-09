@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.metrics import mean_squared_error
 from scipy.special import logsumexp
 from numeric import log_normalize, log_mat_mul
-from process_data import ConlluDataset
+from process_data import ConlluDataset, OneHot
 
 
 @dataclass
@@ -43,7 +43,7 @@ def forward_backward(
     assert np.allclose(emission.sum(axis=1), 1)
 
     # np.log(0) = -np.inf
-    with np.errstate(divide='ignore'):
+    with np.errstate(divide='ignore', invalid='raise'):
         # increase dimension for mat_mul
         log_pi = np.expand_dims(np.log(pi), axis=0)
         log_transition = np.log(transition)
@@ -51,56 +51,43 @@ def forward_backward(
 
         # one outer loop is one iteration through the whole dataset
         for i in range(max_iter):
-            for j, sentence in enumerate(dataset.sentences):
-                sequence = np.zeros((len(sentence), 1, dataset.vocabulary_size))
-                for k, word in enumerate(sentence):
-                    sequence[k] = np.array([dataset.ohe.encode(word)])
-                # increase dimension for mat_mul
-                log_observed = np.log(sequence)
-                log_p_j_at_t, log_xi = forward_backward_expect(log_observed, log_pi, log_transition, log_emission_T)
-                new_log_pi, new_transition, new_emission_T = forward_backward_max(log_p_j_at_t, log_xi, log_observed)
+            # encode word only when required to reduce memory usage
+            p_j_at_t, xi = forward_backward_expect(dataset.sentences, dataset.ohe, log_pi, log_transition, log_emission_T)
+            new_pi, new_transition, new_emission_T = forward_backward_max(
+                dataset.sentences, dataset.ohe, dataset.vocabulary_size, p_j_at_t, xi)
+            assert np.allclose(np.sum(new_transition, axis=1), 1)
+            assert np.allclose(np.sum(new_emission_T, axis=0), 1)
 
-                # save checkpoint
-                status = f"epoch: {i+1}, sequence #: {j+1}/{dataset.n_sentences}"
-                print(status)
+            transition =  np.exp(log_transition)
+            print(f"MSE: {mean_squared_error(new_transition.flatten(), transition.flatten())}")
 
-                if j % 20 == 0:
-                    f = open(f"checkpoints/checkpoint.txt", "w")
-                    f.write(status)
-                    f.close()
-                    np.save("checkpoints/log_pi", new_log_pi)
-                    np.save("checkpoints/transition", new_transition)
-                    np.save("checkpoints/emission_T", new_emission_T)
-
-                # TODO: debugging
-                break
-
-            print(f"transition MSE: {mean_squared_error(new_transition.flatten(), np.exp(log_transition).flatten())}")
-
-            if (np.allclose(np.exp(log_transition), new_transition)
-                    and np.allclose(np.exp(log_emission_T), new_emission_T)):
-                return ForwardBackwardOutput(new_log_pi, new_transition, new_emission_T.T, True)
+            if (np.allclose(transition, new_transition) and
+                    np.allclose(np.exp(log_emission_T), new_emission_T)):
+                return ForwardBackwardOutput(new_pi, new_transition, new_emission_T.T, True)
             else:
+                log_pi = np.log(new_pi)
                 log_transition = np.log(new_transition)
                 log_emission_T = np.log(new_emission_T)
 
-        return ForwardBackwardOutput(new_log_pi, new_transition, new_emission_T.T, True)
+        return ForwardBackwardOutput(new_pi, new_transition, new_emission_T.T, False)
 
 
 def log_forward(
-        log_observed: np.ndarray,
+        sentence: list[str],
+        ohe: OneHot,
         log_pi: np.ndarray,
         log_transition: np.ndarray,
         log_emission_T: np.ndarray) -> np.ndarray:
     """
 
-    :param log_observed:
+    :param sentence:
+    :param ohe:
     :param log_pi:
     :param log_transition:
     :param log_emission_T:
     :return: log a_t(j) = log P(o_1 o_2 ... o_t, q_t=j|lambda). Tx1x|POS|
     """
-    T, _, V = log_observed.shape
+    T = len(sentence)
     _, POS = log_pi.shape
 
     # initialize
@@ -109,31 +96,35 @@ def log_forward(
 
     # 1 x V @ V x POS = 1 x POS
     # 1 x POS * 1 x POS
-    log_p_forward[0] = log_pi + log_mat_mul(log_observed[0], log_emission_T)
+    log_p_forward[0] = log_pi + log_mat_mul(ohe.encode_row_log(sentence[0]), log_emission_T)
 
     # recursion
     for t in range(1, T):
         # 1 x POS @ POS x POS = 1 x POS
         log_p_forward[t] = log_mat_mul(log_p_forward[t - 1], log_transition) + \
-                           log_mat_mul(log_observed[t], log_emission_T)
+                           log_mat_mul(ohe.encode_row_log(sentence[t]), log_emission_T)
+
+        save_checkpoint("log_p_forward", log_p_forward, t, T)
 
     return log_p_forward
 
 
 def log_backward(
-        log_observed: np.ndarray,
+        sentence: list[str],
+        ohe: OneHot,
         log_pi: np.ndarray,
         log_transition: np.ndarray,
         log_emission_T: np.ndarray) -> np.ndarray:
     """
 
-    :param log_observed:
+    :param sentence:
+    :param ohe:
     :param log_pi:
     :param log_transition:
     :param log_emission_T:
     :return: log b_t(i) = log P(o_t+1 o_t+2 ... o_T|q_t = i, lambda). Tx1x|POS|
     """
-    T, _, V = log_observed.shape
+    T = len(sentence)
     _, POS = log_pi.shape
 
     # initialize
@@ -145,120 +136,134 @@ def log_backward(
     for t in range(T - 2, -1, -1):
         # 1 x V @ V x POS = 1 x POS
         # 1 x POS @ POS x POS = 1 x POS
-        log_p_backward[t] = log_mat_mul(log_mat_mul(log_observed[t + 1], log_emission_T), log_transition) + \
-                            log_p_backward[t + 1, :]
+        log_p_backward[t] = log_mat_mul(
+            log_mat_mul(
+                ohe.encode_row_log(sentence[t+1]),
+                log_emission_T
+            ),
+            log_transition
+        ) + log_p_backward[t + 1, :]
+
+        save_checkpoint("log_p_backward", log_p_backward, t, T)
 
     return log_p_backward
 
 
 def expected_state_occupancy_count(
-        log_forward_mat: np.ndarray,
-        log_backward_mat: np.ndarray,
-        log_p_o_lambda) -> np.ndarray:
+        log_p_forward: np.ndarray,
+        log_p_backward: np.ndarray) -> np.ndarray:
     """
 
-    :param log_forward_mat:
-    :param log_backward_mat:
-    :param log_p_o_lambda:
+    :param log_p_forward:
+    :param log_p_backward:
     :return: P(q_t=j|O, lambda). T x 1 x |POS|
     """
-    log_p_j_at_t = log_forward_mat + log_backward_mat - log_p_o_lambda
-    return log_p_j_at_t
+    p_j_at_t = log_normalize(log_p_forward + log_p_backward, axis=2)
+    return p_j_at_t
 
 
 def expected_state_transition_count(
-        log_forward_mat,
-        log_backward_mat,
-        log_transition,
-        log_emission_T,
-        log_observed,
-        log_p_o_lambda) -> np.ndarray:
+        sentence: list[str],
+        ohe: OneHot,
+        log_p_forward: np.ndarray,
+        log_p_backward: np.ndarray,
+        log_transition: np.ndarray,
+        log_emission_T: np.ndarray) -> np.ndarray:
     """
 
-    :param log_forward_mat:
-    :param log_backward_mat:
+    :param sentence:
+    :param ohe:
+    :param log_p_forward:
+    :param log_p_backward:
     :param log_transition:
     :param log_emission_T:
-    :param log_observed:
-    :param log_p_o_lambda:
-    :return: log xi_t(ij).
-        log P(q_t=i, q_{t+1}=j|O, lambda).
+    :return: xi_t(ij).
+        P(q_t=i, q_{t+1}=j|O, lambda).
         the probability at state i at time t and state j at time t+1.
         (T-1) x |POS| x |POS|
     """
-    T, _, POS = log_forward_mat.shape
+    T, _, POS = log_p_forward.shape
     log_xi = np.zeros((T - 1, POS, POS))
-    log_transition_T = log_transition.T
 
     for t in range(T - 1):
-        # 1 x POS automatic broadcast to POS x POS
-        # POS x POS * POS x POS
-        log_xi[t] = log_forward_mat[t] + log_transition_T + \
-                    log_mat_mul(log_observed[t + 1], log_emission_T) + log_backward_mat[t + 1].T
-    log_xi = log_xi - log_p_o_lambda
-    return log_xi
+        # axis 0: from state, axis 1: to state
+        # POS x 1 * POS x POS * (1 x V @ V x POS) * 1 x POS
+        log_xi[t] = log_p_forward[t].T + log_transition + \
+                    log_mat_mul(ohe.encode_row_log(sentence[t+1]), log_emission_T) + log_p_backward[t + 1]
+
+    # equivalent to:
+    # for t in range(T - 1):
+    #     b_j = log_mat_mul(log_observed[t + 1], log_emission_T)[0]
+    #     for i in range(POS):
+    #         for j in range(POS):
+    #             log_xi[t, i, j] = log_forward_mat[t, 0, i] + log_transition[i, j] +\
+    #                               b_j[j] + log_backward_mat[t+1, 0, j]
+
+        save_checkpoint("log_xi", log_xi, t, T)
+
+    # normalize row
+    xi = log_normalize(log_xi, axis=2)
+    return xi
 
 
 def forward_backward_expect(
-        log_observed: np.ndarray,
+        sentence: list[str],
+        ohe: OneHot,
         log_pi: np.ndarray,
         log_transition: np.ndarray,
         log_emission_T: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """
 
-    :param log_observed:
+    :param sentence:
+    :param ohe:
     :param log_pi:
     :param log_transition:
     :param log_emission_T:
-    :return: log_p_j_at_t, log_xi
+    :return: p_j_at_t, xi
     """
-    log_forward_mat = log_forward(log_observed, log_pi, log_transition, log_emission_T)
-    log_backward_mat = log_backward(log_observed, log_pi, log_transition, log_emission_T)
+    log_p_forward = log_forward(sentence, ohe, log_pi, log_transition, log_emission_T)
+    log_p_backward = log_backward(sentence, ohe, log_pi, log_transition, log_emission_T)
     # p_o_lambda: P(O|lambda)
-    log_p_o_lambda = logsumexp(log_forward_mat[-1][0])
+    # p_o_lambda = np.sum(log_forward_mat[-1])
     # (T-1) x 1 x 1
-    log_p_j_at_t = expected_state_occupancy_count(log_forward_mat, log_backward_mat, log_p_o_lambda)
-    log_xi = expected_state_transition_count(
-        log_forward_mat,
-        log_backward_mat,
-        log_transition,
-        log_emission_T,
-        log_observed,
-        log_p_o_lambda)
-    return log_p_j_at_t, log_xi
+    p_j_at_t = expected_state_occupancy_count(log_p_forward, log_p_backward)
+    xi = expected_state_transition_count(
+        sentence, ohe, log_p_forward, log_p_backward, log_transition, log_emission_T)
+    return p_j_at_t, xi
 
 
 def forward_backward_max(
-        log_p_j_at_t: np.ndarray,
-        log_xi: np.ndarray,
-        log_observed: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        sentence: list[str],
+        ohe: OneHot,
+        vocabulary_size: int,
+        p_j_at_t: np.ndarray,
+        xi: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
 
-    :param log_p_j_at_t:
-    :param log_xi:
-    :param log_observed:
-    :return: log_pi, transition, emission_T
+    :param sentence:
+    :param ohe:
+    :param vocabulary_size:
+    :param p_j_at_t:
+    :param xi:
+    :return: pi, transition, emission_T
     """
-    log_transition = logsumexp(log_xi, axis=0)
+    log_transition: np.ndarray = logsumexp(np.log(xi), axis=0)
     transition = log_normalize(log_transition, axis=1)
 
-    T, _, V = log_observed.shape
-    _, _, POS = log_p_j_at_t.shape
+    T = len(sentence)
+    _, _, POS = p_j_at_t.shape
 
-    log_pi = log_p_j_at_t[0]
-    assert np.allclose(np.sum(np.exp(log_pi)), 1)
+    pi = p_j_at_t[0]
 
-    log_emission_T = np.full((V, POS), -np.inf)
+    log_emission_T = np.full((vocabulary_size, POS), -np.inf)
     for t in range(T):
         # V x 1 @ 1 x POS = V x POS
         log_emission_T = np.logaddexp(
             log_emission_T,
-            log_mat_mul(log_observed[t].T, log_p_j_at_t[t])
+            log_mat_mul(ohe.encode_row_log(sentence[t]).T, np.log(p_j_at_t[t]))
         )
     emission_T = log_normalize(log_emission_T, axis=0)
-    assert np.allclose(np.sum(emission_T, axis=2), 1)
-
-    return log_pi, transition, emission_T
+    return pi, transition, emission_T
 
 
 def seed_matrices(n_hidden: int, n_observed: int, seed: int = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -277,3 +282,14 @@ def seed_matrices(n_hidden: int, n_observed: int, seed: int = None) -> tuple[np.
     emission = np.random.rand(n_hidden, n_observed)
     emission = emission / np.expand_dims(emission.sum(axis=1), axis=1)
     return pi, transition, emission
+
+
+def save_checkpoint(name: str, value: np.ndarray, t: int, T: int):
+    # 30 seconds for forward
+    if t % 3000 == 0:
+        status = f"{name}, token #: {t + 1}/{T}"
+        print(status)
+        f = open(f"checkpoints/checkpoint.txt", "a")
+        f.write(status)
+        f.close()
+        np.save(f"checkpoints/{name}", value)

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
 import conllu
-from conllu import TokenList
 
 
 def process_conllu(file_path: str, word_to_one_hot: dict[str, int] = None):
@@ -13,17 +12,17 @@ def process_conllu(file_path: str, word_to_one_hot: dict[str, int] = None):
     words = set()
     upos = set()
     xpos = set()
+    # separated by <SEP>
     sentences = []
     # list of TokenList. Each TokenList is a sentence.
     # Token only prints form attribute. To obtain all, iterate over token like dictionary.
     for token_list in data:
-        sentence = []
         for token in token_list:
             words.add(token["form"])
             upos.add(token["upos"])
             xpos.add(token["xpos"])
-            sentence.append(token["form"])
-        sentences.append(sentence)
+            sentences.append(token["form"])
+        sentences.append("<SEP>")
 
     if not word_to_one_hot:
         word_to_one_hot = {word: i for i, word in enumerate(words)}
@@ -60,15 +59,23 @@ class OneHot:
         index_where_1 = np.where(vector == 1)[0][0]
         return self.one_hot_to_word[index_where_1]
 
+    def encode_row_log(self, word: str):
+        matrix = np.zeros((1, len(self.word_to_one_hot)+1))
+        if word in self.word_to_one_hot:
+            matrix[0, self.word_to_one_hot[word]] = 1
+        else:
+            matrix[0, -1] = 1
+        return np.log(matrix)
+
 
 @dataclass
 class ConlluDataset:
-    def __init__(self, sentences: list[list[str]], upos: set[str], xpos: set[str], ohe: OneHot):
+    def __init__(self, sentences: list[str], upos: set[str], xpos: set[str], ohe: OneHot):
         self.sentences = sentences
         self.upos = upos
         self.xpos = xpos
         self.ohe = ohe
-        self.n_sentences = len(sentences)
+        self.n_tokens = len(sentences)
         self.vocabulary_size = len(ohe.one_hot_to_word)
 
 
