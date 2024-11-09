@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
+from sklearn.metrics import mean_squared_error
 from scipy.special import logsumexp
 from numeric import log_normalize, log_mat_mul
 from process_data import ConlluDataset
@@ -27,7 +28,7 @@ def forward_backward(
         max_iter: int) -> ForwardBackwardOutput:
     """
 
-    :param observed_sequences:
+    :param dataset:
     :param pi: initial probability distribution. |POS|
     :param transition: transition matrix. axis=0: current state, axis=1: next state. |POS|^2
     :param emission: emission matrix. axis=0: hidden state, axis=1: observed state. |POS| x |vocabulary|
@@ -50,24 +51,40 @@ def forward_backward(
 
         # one outer loop is one iteration through the whole dataset
         for i in range(max_iter):
-            for j, sentence in enumerate(dataset.data):
+            for j, sentence in enumerate(dataset.sentences):
                 sequence = np.zeros((len(sentence), 1, dataset.vocabulary_size))
                 for k, word in enumerate(sentence):
                     sequence[k] = np.array([dataset.ohe.encode(word)])
                 # increase dimension for mat_mul
                 log_observed = np.log(sequence)
-                p_j_at_t, log_xi = forward_backward_expect(log_observed, log_pi, log_transition, log_emission_T)
-                new_pi, new_transition, new_emission_T = forward_backward_max(p_j_at_t, log_xi, log_observed)
+                log_p_j_at_t, log_xi = forward_backward_expect(log_observed, log_pi, log_transition, log_emission_T)
+                new_log_pi, new_transition, new_emission_T = forward_backward_max(log_p_j_at_t, log_xi, log_observed)
 
-                print(f"epoch: {i+1}, sequence #: {j+1}/{dataset.dataset_size}")
+                # save checkpoint
+                status = f"epoch: {i+1}, sequence #: {j+1}/{dataset.n_sentences}"
+                print(status)
 
-            if np.allclose(np.exp(log_transition), new_transition) and np.allclose(np.exp(log_emission_T), new_emission_T):
-                return ForwardBackwardOutput(new_pi, new_transition, new_emission_T.T, True)
+                if j % 20 == 0:
+                    f = open(f"checkpoints/checkpoint.txt", "w")
+                    f.write(status)
+                    f.close()
+                    np.save("checkpoints/log_pi", new_log_pi)
+                    np.save("checkpoints/transition", new_transition)
+                    np.save("checkpoints/emission_T", new_emission_T)
+
+                # TODO: debugging
+                break
+
+            print(f"transition MSE: {mean_squared_error(new_transition.flatten(), np.exp(log_transition).flatten())}")
+
+            if (np.allclose(np.exp(log_transition), new_transition)
+                    and np.allclose(np.exp(log_emission_T), new_emission_T)):
+                return ForwardBackwardOutput(new_log_pi, new_transition, new_emission_T.T, True)
             else:
                 log_transition = np.log(new_transition)
                 log_emission_T = np.log(new_emission_T)
 
-        return ForwardBackwardOutput(new_pi, new_transition, new_emission_T.T, True)
+        return ForwardBackwardOutput(new_log_pi, new_transition, new_emission_T.T, True)
 
 
 def log_forward(
@@ -136,16 +153,17 @@ def log_backward(
 
 def expected_state_occupancy_count(
         log_forward_mat: np.ndarray,
-        log_backward_mat: np.ndarray) -> np.ndarray:
+        log_backward_mat: np.ndarray,
+        log_p_o_lambda) -> np.ndarray:
     """
 
     :param log_forward_mat:
     :param log_backward_mat:
-    :param norm:
+    :param log_p_o_lambda:
     :return: P(q_t=j|O, lambda). T x 1 x |POS|
     """
-    p_j_at_t = log_normalize(log_forward_mat + log_backward_mat, axis=2)
-    return p_j_at_t
+    log_p_j_at_t = log_forward_mat + log_backward_mat - log_p_o_lambda
+    return log_p_j_at_t
 
 
 def expected_state_transition_count(
@@ -153,7 +171,8 @@ def expected_state_transition_count(
         log_backward_mat,
         log_transition,
         log_emission_T,
-        log_observed) -> np.ndarray:
+        log_observed,
+        log_p_o_lambda) -> np.ndarray:
     """
 
     :param log_forward_mat:
@@ -161,9 +180,9 @@ def expected_state_transition_count(
     :param log_transition:
     :param log_emission_T:
     :param log_observed:
-    :param norm:
-    :return: xi_t(ij).
-        P(q_t=i, q_{t+1}=j|O, lambda).
+    :param log_p_o_lambda:
+    :return: log xi_t(ij).
+        log P(q_t=i, q_{t+1}=j|O, lambda).
         the probability at state i at time t and state j at time t+1.
         (T-1) x |POS| x |POS|
     """
@@ -176,8 +195,8 @@ def expected_state_transition_count(
         # POS x POS * POS x POS
         log_xi[t] = log_forward_mat[t] + log_transition_T + \
                     log_mat_mul(log_observed[t + 1], log_emission_T) + log_backward_mat[t + 1].T
-    xi = log_normalize(log_xi, axis=2)
-    return xi
+    log_xi = log_xi - log_p_o_lambda
+    return log_xi
 
 
 def forward_backward_expect(
@@ -191,52 +210,55 @@ def forward_backward_expect(
     :param log_pi:
     :param log_transition:
     :param log_emission_T:
-    :return: p_j_at_t, log_xi
+    :return: log_p_j_at_t, log_xi
     """
     log_forward_mat = log_forward(log_observed, log_pi, log_transition, log_emission_T)
     log_backward_mat = log_backward(log_observed, log_pi, log_transition, log_emission_T)
+    # p_o_lambda: P(O|lambda)
+    log_p_o_lambda = logsumexp(log_forward_mat[-1][0])
     # (T-1) x 1 x 1
-    norm = np.expand_dims(logsumexp(log_forward_mat + log_backward_mat, axis=2), axis=2)
-    p_j_at_t = expected_state_occupancy_count(log_forward_mat, log_backward_mat)
+    log_p_j_at_t = expected_state_occupancy_count(log_forward_mat, log_backward_mat, log_p_o_lambda)
     log_xi = expected_state_transition_count(
         log_forward_mat,
         log_backward_mat,
         log_transition,
         log_emission_T,
-        log_observed)
-    return p_j_at_t, log_xi
+        log_observed,
+        log_p_o_lambda)
+    return log_p_j_at_t, log_xi
 
 
 def forward_backward_max(
-        p_j_at_t: np.ndarray,
+        log_p_j_at_t: np.ndarray,
         log_xi: np.ndarray,
         log_observed: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
 
-    :param p_j_at_t:
+    :param log_p_j_at_t:
     :param log_xi:
     :param log_observed:
-    :return: pi, transition, emission_T
+    :return: log_pi, transition, emission_T
     """
     log_transition = logsumexp(log_xi, axis=0)
     transition = log_normalize(log_transition, axis=1)
 
     T, _, V = log_observed.shape
-    _, _, POS = p_j_at_t.shape
+    _, _, POS = log_p_j_at_t.shape
 
-    pi = p_j_at_t[0]
-    assert np.sum(pi) == 1
+    log_pi = log_p_j_at_t[0]
+    assert np.allclose(np.sum(np.exp(log_pi)), 1)
 
     log_emission_T = np.full((V, POS), -np.inf)
     for t in range(T):
         # V x 1 @ 1 x POS = V x POS
         log_emission_T = np.logaddexp(
             log_emission_T,
-            log_mat_mul(log_observed[t].T, np.log(p_j_at_t[t]))
+            log_mat_mul(log_observed[t].T, log_p_j_at_t[t])
         )
     emission_T = log_normalize(log_emission_T, axis=0)
+    assert np.allclose(np.sum(emission_T, axis=2), 1)
 
-    return pi, transition, emission_T
+    return log_pi, transition, emission_T
 
 
 def seed_matrices(n_hidden: int, n_observed: int, seed: int = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

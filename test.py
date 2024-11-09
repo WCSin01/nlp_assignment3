@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.special import logsumexp
 from forward_backward_hmm import forward_backward, seed_matrices
+import pickle
 
 # result = forward_backward(
 #     np.array([[1,0,0,0],
@@ -58,4 +59,48 @@ from forward_backward_hmm import forward_backward, seed_matrices
 # print(np.log(0))
 # print(np.exp(np.log(0)))
 
+# a = np.array([
+#     [[1,2,3]],
+#     [[4,5,6]],
+#     [[7,8,9]]
+# ])
+# print(a)
+# b = a / np.expand_dims(np.sum(a, axis=0), axis=0)
+# c = a / np.expand_dims(np.sum(a, axis=2), axis=2)
+# print(b)
+# print(np.sum(b, axis=0))
+# print(c)
+# print(np.sum(c, axis=0))
+
+# print(np.sum([7.92778146e-04, 1.04461029e-01, 5.29526100e-05, 2.50079287e-01,
+#   8.36249927e-03, 1.03482344e-02, 3.32473967e-03, 9.86535318e-02,
+#   1.66573855e-02, 1.52852873e-01, 7.46425709e-02, 1.27271099e-01,
+#   3.61979532e-02, 1.19196782e-02, 4.98068922e-03, 5.64772503e-02,
+#   4.29254495e-02]))
+from process_data import process_conllu, OneHot
+
+# POS = 17, V = 44390
+# dataset = process_conllu("ptb-train.conllu")
+# print(len(dataset.upos))
+
+f = open("checkpoints/word_to_one_hot.pkl", "rb")
+word_to_one_hot = pickle.load(f)
+# ohe = OneHot(word_to_one_hot)
+dataset = process_conllu("ptb-train.conllu", word_to_one_hot)
+ohe = dataset.ohe
+transition = np.load("checkpoints/transition.npy")
+# V x POS
+emission_T = np.load("checkpoints/emission_T.npy")
+assert np.allclose(emission_T.sum(axis=0), 1)
+
+for sentence in dataset.sentences:
+    for token in sentence:
+        u = emission_T[ohe.get_index(token)]
+        argmax_u = np.argmax(u)
+        print(argmax_u)
+    break
+
+# print(np.argsort(transition[argmax_u])[::-1])
+# w = emission_T[ohe.get_index("of")]
+# print(w)
 

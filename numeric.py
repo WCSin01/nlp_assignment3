@@ -25,6 +25,6 @@ def log_normalize(log_array: np.ndarray, axis=None) -> np.ndarray:
     :param axis:
     :return: normalized array no longer in log space
     """
-    array = np.exp(log_array - np.max(log_array, axis=axis))
-    array = array / np.sum(array, axis=axis)
+    array = np.exp(log_array - np.expand_dims(np.max(log_array, axis=axis), axis=axis))
+    array = array / np.expand_dims(np.sum(array, axis=axis), axis=axis)
     return array

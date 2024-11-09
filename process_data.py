@@ -4,7 +4,7 @@ import conllu
 from conllu import TokenList
 
 
-def process_conllu(file_path: str):
+def process_conllu(file_path: str, word_to_one_hot: dict[str, int] = None):
     f = open(file_path, "r")
     data = f.read()
     data = conllu.parse(data)
@@ -25,7 +25,8 @@ def process_conllu(file_path: str):
             sentence.append(token["form"])
         sentences.append(sentence)
 
-    word_to_one_hot = {word: i for i, word in enumerate(words)}
+    if not word_to_one_hot:
+        word_to_one_hot = {word: i for i, word in enumerate(words)}
     ohe = OneHot(word_to_one_hot)
     return ConlluDataset(sentences, upos, xpos, ohe)
 
@@ -44,6 +45,12 @@ class OneHot:
             vector[-1] = 1
         return vector
 
+    def get_index(self, word: str):
+        if word in self.word_to_one_hot:
+            return self.word_to_one_hot[word]
+        else:
+            return len(self.word_to_one_hot)+1
+
     def decode(self, vector: np.ndarray) -> str:
         """
 
@@ -56,12 +63,12 @@ class OneHot:
 
 @dataclass
 class ConlluDataset:
-    def __init__(self, data: list[TokenList], upos: set[str], xpos: set[str], ohe: OneHot):
-        self.data = data
+    def __init__(self, sentences: list[list[str]], upos: set[str], xpos: set[str], ohe: OneHot):
+        self.sentences = sentences
         self.upos = upos
         self.xpos = xpos
         self.ohe = ohe
-        self.dataset_size = len(data)
+        self.n_sentences = len(sentences)
         self.vocabulary_size = len(ohe.one_hot_to_word)
 
 
