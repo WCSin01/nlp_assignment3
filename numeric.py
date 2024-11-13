@@ -17,7 +17,7 @@ def log_mat_mul(logA: np.ndarray, logB: np.ndarray) -> np.ndarray:
     return logsumexp(log_pairwise_products, axis=1)
 
 
-def log_normalize(log_array: np.ndarray, axis=None) -> np.ndarray:
+def log_normalize_exp(log_array: np.ndarray, axis=None) -> np.ndarray:
     """
     normalize in log space
 

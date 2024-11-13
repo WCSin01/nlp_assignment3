@@ -41,15 +41,15 @@ if __name__ == "__main__":
             # n_token x 13 x 768
             hidden_state = hidden_state.permute(1, 0, 2)
 
-            # for best results, concatenate last 4 layers
-            token_embeddings = torch.empty(hidden_state.shape[0], 768*4)
+            # for best results + reduce dimensions: average last 4 layers
+            token_embeddings = torch.empty(hidden_state.shape[0], 768)
             # exclude special markers
             for token_idx, token in enumerate(hidden_state[1:-1]):
                 # token: 13 x 768
-                # token embedding: n_tokens x 3072
-                token_embeddings[token_idx] = torch.cat((token[-1], token[-2], token[-3], token[-4]))
+                # token embedding: n_tokens x 768
+                token_embeddings[token_idx] =\
+                    torch.stack([token[-1], token[-2], token[-3], token[-4]], dim=0).sum(dim=0).div(4)
             torch.save(token_embeddings, f"checkpoints/bert_word_embedding/sentence{sentence_idx}.pt")
 
-        # debugging
-        if sentence_idx+1 == 10:
-            break
+        if sentence_idx % 500 == 0:
+            print(f"sentence {sentence_idx+1}/{len(sentences)}")
