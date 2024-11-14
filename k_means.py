@@ -28,6 +28,7 @@ if __name__ == "__main__":
     kmeans = KMeans(n_clusters=n_clusters, n_init="auto", max_iter=30).fit(token_embeddings)
 
     f = open("checkpoints/cluster.csv", "w")
+    f.write(f"word, cluster\n")
     for token, label in zip(tokens, kmeans.labels_):
         # item() to get native py int
         f.write(f"{token}, {label.item()}\n")
