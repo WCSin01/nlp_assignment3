@@ -1,35 +1,27 @@
-import pickle
 import torch
+import numpy as np
 from sklearn.cluster import KMeans
+
+from functions import flatten, pickle_load
+from process_conllu import ConlluDataset
 
 # n_sentences = 39651
 n_sentences = 10
 n_clusters = 17
 
 if __name__ == "__main__":
-    tokens = []
-    token_embeddings = []
-    for sentence_idx in range(n_sentences):
-        f = open(f"checkpoints/bert_tokens/sentence{sentence_idx}.pkl", "rb")
-        sentence_tokens: list[str] = pickle.load(f)
-        tokens += sentence_tokens
-        f.close()
-        sentence_token_embeddings = torch.load(
-            f"checkpoints/bert_word_embedding/sentence{sentence_idx}.pt",
-            map_location="cpu",
-            weights_only=True)
-        token_embeddings += sentence_token_embeddings
-
+    dataset: ConlluDataset = pickle_load(f"checkpoints/dataset.pkl")
+    
+    word_embeddings: list[np.ndarray] = pickle_load("checkpoints/word_embeddings.pkl")
     # is cosine distance because it is already normalized
-    token_embeddings = torch.stack(token_embeddings)
-    token_embeddings = token_embeddings / token_embeddings.sum(dim=0)
+    flat_word_embeddings = np.concatenate(word_embeddings)
 
     # n_tokens x 768
-    kmeans = KMeans(n_clusters=n_clusters, n_init="auto", max_iter=30).fit(token_embeddings)
+    kmeans = KMeans(n_clusters=n_clusters, n_init="auto", max_iter=30).fit(flat_word_embeddings)
 
-    f = open("checkpoints/cluster.csv", "w")
+    f = open("results/k_means.csv", "w")
     f.write(f"word, cluster\n")
-    for token, label in zip(tokens, kmeans.labels_):
+    for token, label in zip(flatten(dataset.sequences), kmeans.labels_):
         # item() to get native py int
         f.write(f"{token}, {label.item()}\n")
     f.close()

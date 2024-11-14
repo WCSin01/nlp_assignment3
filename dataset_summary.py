@@ -16,7 +16,7 @@ if __name__ == "__main__":
     cumulative_proportion = np.cumsum(proportion_words_with_count[::-1])
     cumulative_words = np.cumsum(list(n_words_with_count.values())[::-1])
 
-    f = open("count_proportion.csv", "w")
+    f = open("results/count_proportion.csv", "w")
     f.write("count, cumulative proportion, cumulative unique words\n")
     for count, proportion, n_words in zip(
             list(n_words_with_count.keys())[::-1],
@@ -32,5 +32,5 @@ if __name__ == "__main__":
     ax.set_title("Zipf's law")
     ax.set_ylabel("Word frequency")
     ax.set_xlabel("Rank")
-    plt.savefig("zipf.png")
+    plt.savefig("results/zipf.png")
     plt.show()

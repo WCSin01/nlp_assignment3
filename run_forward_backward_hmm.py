@@ -1,22 +1,17 @@
-import pickle
-import numpy as np
-from forward_backward_hmm import seed_matrices, HMM
-from numeric import masked_normalize
-from process_conllu import ConlluProcessor, ConlluDataset
+from forward_backward_hmm import HMMParameters, seed_matrices, HMM
+from process_conllu import ConlluDataset
 
 if __name__ == "__main__":
-    # dataset = ConlluProcessor.process_conllu_for_hmm("ptb-train.conllu")
-    # f = open(f"checkpoints/dataset.pkl", "wb")
-    # pickle.dump(dataset, f)
-    # f.close()
-    # print("data parsed")
+    dataset: ConlluDataset = pickle_load("checkpoints/dataset.pkl")
 
-    f = open("checkpoints/dataset.pkl", "rb")
-    dataset: ConlluDataset = pickle.load(f)
-    f.close()
+    # pi, transition, emission = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size+1)
 
-    pi, transition, emission = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size+1)
+    parameters: HMMParameters = pickle_load("checkpoints/forward_backward/epoch3.pkl")
+
+    pi = parameters.pi.flatten()
+    transition = parameters.transition
+    emission = parameters.emission
 
     hmm = HMM(dataset, pi, transition, emission)
-    has_converged = hmm.forward_backward(max_iter=1)
+    has_converged = hmm.forward_backward(max_iter=5)
     print(f"has convereged: {has_converged}")

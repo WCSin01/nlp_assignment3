@@ -31,14 +31,14 @@ class ConlluProcessor:
         return word_counts, sentence_lengths
 
     @staticmethod
-    def process_conllu_for_bert(file_path: str) -> list[str]:
+    def process_conllu_for_bert(file_path: str):
         f = open(file_path, "r")
         data = f.read()
         data = conllu.parse(data)
         f.close()
 
         n_tokens = 0
-        sentences = []
+        sentences: list[list[str]] = []
         # list of TokenList. Each TokenList is a sentence.
         # Token only prints form attribute. To obtain all, iterate over token like dictionary.
         for token_list in data:
@@ -49,7 +49,7 @@ class ConlluProcessor:
             for token in token_list:
                 n_tokens += 1
                 sentence.append(token["form"])
-            sentences.append(" ".join(sentence))
+            sentences.append(sentence)
 
         return sentences
 

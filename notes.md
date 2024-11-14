@@ -29,6 +29,12 @@ misc: None
     # assert np.allclose(emission.sum(axis=1), 1)
 ```
 
+# TODO
+
+rename bert_token_embedding, sentence_ls
+
+# Misc
+
 bert <5 hours
 
 100 iterations, kmeans 6 hours

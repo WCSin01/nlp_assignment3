@@ -7,16 +7,15 @@ from process_conllu import ConlluProcessor
 if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-    sentences = ConlluProcessor.process_conllu_for_bert("ptb-train.conllu")
-    f = open("checkpoints/sentences.pkl", "wb")
-    pickle.dump(sentences, f)
+    f = open("checkpoints/sentences.pkl", "rb")
+    sentences = pickle.load(f)
     f.close()
-    print("dataset parsed")
 
     model_value = "bert-base-uncased"
     tokenizer = BertTokenizer.from_pretrained(model_value)
     model = BertModel.from_pretrained(model_value, output_hidden_states=True).to(device)
-    for sentence_idx, sentence in enumerate(sentences):
+    for sentence_idx, sentence_ls in enumerate(sentences):
+        sentence = " ".join(sentence_ls)
         marked_text = f"[CLS] {sentence} [SEP]"
         tokenized_text: list[str] = tokenizer.tokenize(marked_text)
         f = open(f"checkpoints/bert_tokens/sentence{sentence_idx}.pkl", "wb")

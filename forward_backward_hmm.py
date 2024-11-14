@@ -5,6 +5,7 @@ from typing import Generic, TypeVar
 import numpy as np
 from scipy.special import logsumexp
 from sklearn.metrics import mean_squared_error
+from functions import pickle_dump
 
 from numeric import log_normalize_exp, log_mat_mul
 from process_conllu import Dataset
@@ -99,7 +100,9 @@ class HMM(Generic[TypeT]):
                 transition = np.exp(self.log_transition)
                 print(f"transition MSE: {mean_squared_error(new_transition.flatten(), transition.flatten())}")
 
-                self.save_epoch_checkpoint(i, new_emission_T, new_pi, new_transition)
+                pickle_dump(
+                    HMMParameters(new_pi, new_transition, new_emission_T.T),
+                    f"checkpoints/forward_backward/epoch{i}.pkl")
 
                 if (np.allclose(transition, new_transition, atol=1.e-3) and
                         np.allclose(np.exp(self.log_emission_T), new_emission_T, atol=1.e-3)):
@@ -110,19 +113,14 @@ class HMM(Generic[TypeT]):
 
             return False
 
-    def save_epoch_checkpoint(self, i, new_emission_T, new_pi, new_transition):
-        f = open(f"checkpoints/forward_backward_epoch{i}.pkl", "wb")
-        pickle.dump(HMMParameters(new_pi, new_transition, new_emission_T.T), f)
-        f.close()
-
     def save_sequence_checkpoint(self, i, max_iter, j, new_pi_not_normalized, new_transition_not_normalized,
                                  new_emission_T_not_normalized):
-        f = open("checkpoints/checkpoint.txt", "w")
+        f = open("checkpoints/forward_backward/checkpoint.txt", "w")
         f.write(f"i: {i}, j: {j}")
         f.close()
-        np.save(f"checkpoints/new_pi_not_normalized", new_pi_not_normalized)
-        np.save(f"checkpoints/new_transition_not_normalized", new_transition_not_normalized)
-        np.save(f"checkpoints/new_emission_T_not_normalized", new_emission_T_not_normalized)
+        np.save(f"checkpoints/forward_backward/new_pi_not_normalized", new_pi_not_normalized)
+        np.save(f"checkpoints/forward_backward/new_transition_not_normalized", new_transition_not_normalized)
+        np.save(f"checkpoints/forward_backward/new_emission_T_not_normalized", new_emission_T_not_normalized)
         print(f"epoch: {i + 1}/{max_iter}, sequence #: {j + 1}/{len(self.dataset.sequences)}")
 
     def log_forward(self, encoded_sequence: np.ndarray) -> np.ndarray:
