@@ -1,5 +1,7 @@
 import pickle
+import numpy as np
 from forward_backward_hmm import seed_matrices, HMM
+from numeric import masked_normalize
 from process_conllu import ConlluProcessor, ConlluDataset
 
 if __name__ == "__main__":
@@ -14,6 +16,7 @@ if __name__ == "__main__":
     f.close()
 
     pi, transition, emission = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size+1)
+
     hmm = HMM(dataset, pi, transition, emission)
-    has_converged = hmm.forward_backward(max_iter=100)
+    has_converged = hmm.forward_backward(max_iter=1)
     print(f"has convereged: {has_converged}")

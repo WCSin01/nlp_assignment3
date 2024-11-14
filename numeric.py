@@ -25,12 +25,14 @@ def log_normalize_exp(log_array: np.ndarray, axis=None) -> np.ndarray:
     :param axis:
     :return: normalized array no longer in log space
     """
-    # fix when item in axis is zero
-    max_ = np.max(log_array, axis=axis)
-    max_[np.isinf(max_)] = 0
-    array = np.exp(log_array - np.expand_dims(max_, axis=axis))
-    # fix when item in axis is zero
+    max_ = np.expand_dims(np.max(log_array, axis=axis), axis=axis)
+    array = np.exp(log_array - np.ma.array(max_, mask=np.isinf(max_)))
     sum_ = np.sum(array, axis=axis)
-    sum_[sum_ == 0] = 1
     array = array / np.expand_dims(sum_, axis=axis)
-    return array
+    return array.filled(fill_value=0)
+
+
+def masked_normalize(array: np.ndarray, axis=None) -> np.ndarray:
+    sum_ = np.sum(array, axis=axis)
+    array = array / np.expand_dims(np.ma.array(sum_, mask=(sum_==0)), axis=axis)
+    return array.filled(fill_value=0)
