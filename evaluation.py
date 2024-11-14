@@ -71,3 +71,7 @@ def save_checkpoint(i, dataset_size, pred_hidden_seqs):
     pickle.dump(pred_hidden_seqs)
     f.close()
     print(f"sentence: {i + 1}/{dataset_size}")
+
+
+if __name__ == "__main__":
+    evaluate()
