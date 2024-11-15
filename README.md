@@ -25,3 +25,8 @@ k_means.py - subtask 2.2
 evaluation.py - subtask 3
 report.pdf - subtask 3
 ```
+
+# Report
+
+
+

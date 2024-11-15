@@ -2,6 +2,7 @@ from forward_backward_hmm import HMMParameters, seed_matrices, HMM
 from functions import pickle_load
 from process_conllu import ConlluDataset
 
+# 35-45 min per iteration
 if __name__ == "__main__":
     dataset: ConlluDataset = pickle_load("checkpoints/dataset.pkl")
 

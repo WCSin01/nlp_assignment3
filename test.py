@@ -1,13 +1,16 @@
+import torch
+from forward_backward_hmm import HMMParameters
 from functions import pickle_dump, pickle_load
-
-n_sentences = 39650
+import numpy as np
 
 if __name__ == "__main__":
-    tokens = []
-    for i in range(n_sentences):
-        sentence_tokens: list[str] = pickle_load(f"checkpoints/bert_tokens/sentence{i}.pkl")
-        tokens.append(sentence_tokens)
+    pass
 
-        if i % 5000 == 0:
-            print(i)
-    pickle_dump(tokens, "tokens.pkl")
+    # params: HMMParameters = pickle_load("checkpoints/forward_backward_saved/epoch5.pkl")
+
+    # assert np.isclose(np.sum(params.pi.flatten()), 1)
+    # assert np.isclose(np.all(np.sum(params.transition, axis=1)), 1)
+    # assert np.isclose(np.all(np.sum(params.emission, axis=1)), 1)
+    # assert not np.any(np.isnan(params.pi.flatten()))
+    # assert not np.any(np.isnan(params.transition))
+    # assert not np.any(np.isnan(params.emission))
