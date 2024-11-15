@@ -2,25 +2,20 @@
 import pickle
 import torch
 from transformers import BertTokenizer, BertModel
+from functions import pickle_load
 from process_conllu import ConlluProcessor
 
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+model_value = "bert-base-uncased"
+
 if __name__ == "__main__":
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
-    f = open("checkpoints/sentences.pkl", "rb")
-    sentences = pickle.load(f)
-    f.close()
-
-    model_value = "bert-base-uncased"
+    sentences = pickle_load("checkpoints/sentences.pkl")
     tokenizer = BertTokenizer.from_pretrained(model_value)
     model = BertModel.from_pretrained(model_value, output_hidden_states=True).to(device)
     for sentence_idx, sentence_ls in enumerate(sentences):
         sentence = " ".join(sentence_ls)
         marked_text = f"[CLS] {sentence} [SEP]"
         tokenized_text: list[str] = tokenizer.tokenize(marked_text)
-        f = open(f"checkpoints/bert_tokens/sentence{sentence_idx}.pkl", "wb")
-        pickle.dump(tokenized_text, f)
-        f.close()
 
         indexed_tokens: list[int] = tokenizer.convert_tokens_to_ids(tokenized_text)
         token_tensor = torch.tensor([indexed_tokens]).to(device)
@@ -48,7 +43,7 @@ if __name__ == "__main__":
                 # token embedding: n_tokens x 768
                 token_embeddings[token_idx] =\
                     torch.stack([token[-1], token[-2], token[-3], token[-4]], dim=0).sum(dim=0).div(4)
-            torch.save(token_embeddings, f"checkpoints/bert_word_embedding/sentence{sentence_idx}.pt")
+            torch.save(token_embeddings, f"checkpoints/bert_toekn_embeddings/sentence{sentence_idx}.pt")
 
         if sentence_idx % 500 == 0:
             print(f"sentence {sentence_idx+1}/{len(sentences)}")

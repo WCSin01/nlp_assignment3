@@ -3,7 +3,7 @@
 Install pytorch: https://pytorch.org/get-started/locally/
 
 ```
-pip install -r /path/to/requirements.txt
+pip install -r requirements.txt
 ```
 
 Build directories
@@ -11,8 +11,7 @@ Build directories
 ```
 mkdir checkpoints
 cd checkpoints
-mkdir bert_tokens
-mkdir bert_word_embedding
+mkdir bert_token_embeddings
 mkdir forward_backward
 mkdir viterbi
 ```
@@ -21,7 +20,7 @@ mkdir viterbi
 
 ```
 forward_backward_hmm.py - subtask 1
-bert_word_embeddings.yp - subtask 2.1
+bert_word_embeddings.py - subtask 2.1
 k_means.py - subtask 2.2
 evaluation.py - subtask 3
 report.pdf - subtask 3

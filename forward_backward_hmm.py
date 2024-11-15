@@ -86,7 +86,7 @@ class HMM(Generic[TypeT]):
                         self.forward_backward_max(new_log_emission_T, new_log_pi,
                                                   new_log_transition, encoded_sequence, p_j_at_t, xi)
 
-                    if j % 200 == 0:
+                    if j % 500 == 0:
                         self.save_sequence_checkpoint(i, max_iter, j, new_log_pi, new_log_transition,
                                                       new_log_emission_T)
                         
@@ -104,8 +104,8 @@ class HMM(Generic[TypeT]):
                     HMMParameters(new_pi, new_transition, new_emission_T.T),
                     f"checkpoints/forward_backward/epoch{i}.pkl")
 
-                if (np.allclose(transition, new_transition, atol=1.e-3) and
-                        np.allclose(np.exp(self.log_emission_T), new_emission_T, atol=1.e-3)):
+                if (np.allclose(transition, new_transition) and
+                        np.allclose(np.exp(self.log_emission_T), new_emission_T)):
                     self.update(new_pi, new_transition, new_emission_T)
                     return True
                 else:

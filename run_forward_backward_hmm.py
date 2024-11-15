@@ -1,4 +1,5 @@
 from forward_backward_hmm import HMMParameters, seed_matrices, HMM
+from functions import pickle_load
 from process_conllu import ConlluDataset
 
 if __name__ == "__main__":
@@ -6,7 +7,7 @@ if __name__ == "__main__":
 
     # pi, transition, emission = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size+1)
 
-    parameters: HMMParameters = pickle_load("checkpoints/forward_backward/epoch3.pkl")
+    parameters: HMMParameters = pickle_load("checkpoints/forward_backward/epoch4.pkl")
 
     pi = parameters.pi.flatten()
     transition = parameters.transition

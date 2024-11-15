@@ -35,6 +35,10 @@ rename bert_token_embedding, sentence_ls
 
 # Misc
 
-bert <5 hours
+transition MSE: 4.0879132319868338e-22
+
+has convereged: True
 
 100 iterations, kmeans 6 hours
+
+~/rds/hpc-work/nlp/logs
