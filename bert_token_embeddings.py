@@ -7,6 +7,7 @@ from functions import pickle_dump, pickle_load
 from process_conllu import ConlluProcessor
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(device)
 model_value = "bert-base-uncased"
 
 # 5 mins on GPU
@@ -15,11 +16,7 @@ if __name__ == "__main__":
     tokenizer = BertTokenizer.from_pretrained(model_value)
     model = BertModel.from_pretrained(model_value, output_hidden_states=True).to(device)
 
-    token_embeddings = dict()
     for sentence_idx, word_list in enumerate(sentences):
-        if sentence_idx not in {19}:
-            continue
-
         if sentence_idx % 500 == 0:
             print(f"sentence {sentence_idx+1}/{len(sentences)}")
 
@@ -47,13 +44,10 @@ if __name__ == "__main__":
 
             # for best results + reduce dimensions: average last 4 layers
             token_embeddings_for_sentence = torch.empty(hidden_state.shape[0], 768)
-            # exclude special markers
             for token_idx, token in enumerate(hidden_state[1:-1]):
                 # token: 13 x 768
                 # token embedding: n_tokens x 768
                 token_embeddings_for_sentence[token_idx] =\
                     torch.stack([token[-1], token[-2], token[-3], token[-4]], dim=0).sum(dim=0).div(4)
 
-        token_embeddings[sentence_idx] = token_embeddings_for_sentence
-
-    torch.save(token_embeddings, "checkpoints/bert_token_embeddings_fix_corrupted.pt")
+        np.save(f"checkpoints/bert_token_embeddings_folder/{sentence_idx}", token_embeddings_for_sentence.numpy())
