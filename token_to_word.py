@@ -1,15 +1,14 @@
+from time import sleep
 import numpy as np
-import torch
-from transformers import BertTokenizer, BertModel
+from transformers import BertTokenizer
 from functions import pickle_dump, pickle_load
 
-device = 'cpu'
 model_value = "bert-base-uncased"
+file_path = "/home/wcs26/rds/hpc-work/nlp/bert_token_embeddings"
 
 if __name__ == "__main__":
     sentences = pickle_load("checkpoints/sentences.pkl")
     tokenizer = BertTokenizer.from_pretrained(model_value)
-    model = BertModel.from_pretrained(model_value, output_hidden_states=True).to(device)
     cum_token_count_by_word: list[np.ndarray] = []
     # tokenizer tokenizes a word the same way whether on its own or in a sentence
     n_sentences = len(sentences)
@@ -25,14 +24,10 @@ if __name__ == "__main__":
             print(f"calculated token count for {sentence_idx+1}/{len(sentences)} sentences")
 
     word_embeddings: list[np.ndarray] = []
-    token_embeddings: list[torch.Tensor] = torch.load(
-        f"checkpoints/bert_token_embeddings_clean.pt",
-        weights_only=True)
-    for sentence_idx in range(n_sentences):       
+    for sentence_idx in range(n_sentences):
         # remove special tokens
-        token_embeddings_for_sentence = token_embeddings[sentence_idx].numpy()[1:-1]
-        sentence_len = cum_token_count_by_word[sentence_idx][-1]
-        word_embeddings_for_sentence = np.zeros((sentence_len, token_embeddings_for_sentence.shape[1]))
+        token_embeddings_for_sentence = np.load(f"{file_path}/{sentence_idx}.npy")[1:-1]
+        word_embeddings_for_sentence = np.zeros((len(sentences[sentence_idx]), token_embeddings_for_sentence.shape[1]))
         for word_idx, (start, end) in enumerate(zip(
             cum_token_count_by_word[sentence_idx][:-1],
             cum_token_count_by_word[sentence_idx][1:])):
@@ -42,4 +37,5 @@ if __name__ == "__main__":
         if sentence_idx % 2000 == 0:
           print(f"remapped token to word for {sentence_idx+1}/{len(sentences)} sentences")
 
-    pickle_dump(word_embeddings, "checkpoints/word_embeddings.pkl")
+    word_embeddings = np.concatenate(word_embeddings)
+    np.save("checkpoints/word_embeddings", word_embeddings)

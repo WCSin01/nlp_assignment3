@@ -135,7 +135,7 @@ class HMM(Generic[TypeT]):
 
             # initialize
             # length x POS
-            log_p_forward = np.full((T, 1, POS), 1e-500)
+            log_p_forward = np.full((T, 1, POS), -np.inf)
 
             # 1 x V @ V x POS = 1 x POS
             # 1 x POS * 1 x POS
@@ -146,6 +146,9 @@ class HMM(Generic[TypeT]):
                 # 1 x POS @ POS x POS = 1 x POS
                 log_p_forward[t] = log_mat_mul(log_p_forward[t - 1], self.log_transition) + \
                                    log_mat_mul(encoded_sequence[t], self.log_emission_T)
+                if np.all(log_p_forward[t] < -743):
+                    print(t)
+                    assert False
             return log_p_forward
 
     def log_backward(self, encoded_sequence: np.ndarray) -> np.ndarray:
