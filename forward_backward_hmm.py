@@ -146,9 +146,6 @@ class HMM(Generic[TypeT]):
                 # 1 x POS @ POS x POS = 1 x POS
                 log_p_forward[t] = log_mat_mul(log_p_forward[t - 1], self.log_transition) + \
                                    log_mat_mul(encoded_sequence[t], self.log_emission_T)
-                if np.all(log_p_forward[t] < -743):
-                    print(t)
-                    assert False
             return log_p_forward
 
     def log_backward(self, encoded_sequence: np.ndarray) -> np.ndarray:
@@ -295,4 +292,4 @@ def seed_matrices(
     transition = transition / np.expand_dims(transition.sum(axis=1), axis=1)
     emission = np.random.rand(n_hidden, n_observed)
     emission = emission / np.expand_dims(emission.sum(axis=1), axis=1)
-    return pi, transition, emission
+    return HMMParameters(pi, transition, emission)

@@ -6,14 +6,14 @@ from process_conllu import ConlluDataset
 if __name__ == "__main__":
     dataset: ConlluDataset = pickle_load("checkpoints/dataset.pkl")
 
-    # pi, transition, emission = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size+1)
+    # parameters: HMMParameters = seed_matrices(len(dataset.xpos_set), dataset.vocabulary_size+1)
 
-    parameters: HMMParameters = pickle_load("checkpoints/forward_backward/epoch4.pkl")
+    parameters: HMMParameters = pickle_load("checkpoints/forward_backward_xpos/epoch2.pkl")
 
     pi = parameters.pi.flatten()
     transition = parameters.transition
     emission = parameters.emission
 
     hmm = HMM(dataset, pi, transition, emission)
-    has_converged = hmm.forward_backward(max_iter=5)
+    has_converged = hmm.forward_backward(max_iter=4)
     print(f"has convereged: {has_converged}")
