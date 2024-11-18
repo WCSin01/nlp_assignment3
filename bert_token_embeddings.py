@@ -7,6 +7,7 @@ from functions import pickle_dump, pickle_load
 from process_conllu import ConlluProcessor
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+# device = 'cpu'
 print(device)
 model_value = "bert-base-uncased"
 
@@ -40,14 +41,13 @@ if __name__ == "__main__":
             # 13 x n_token x 768
             hidden_state = torch.squeeze(hidden_state, dim=1)
             # n_token x 13 x 768
-            hidden_state = hidden_state.permute(1, 0, 2)
+            hidden_state = hidden_state.permute(1, 0, 2).cpu()
 
             # for best results + reduce dimensions: average last 4 layers
-            token_embeddings_for_sentence = torch.empty(hidden_state.shape[0], 768)
+            token_embeddings_for_sentence = torch.empty(hidden_state.shape[0]-2, 768)
             for token_idx, token in enumerate(hidden_state[1:-1]):
                 # token: 13 x 768
                 # token embedding: n_tokens x 768
-                token_embeddings_for_sentence[token_idx] =\
-                    torch.stack([token[-1], token[-2], token[-3], token[-4]], dim=0).sum(dim=0).div(4)
+                token_embeddings_for_sentence[token_idx] = (token[-1]+token[-2]+token[-3]+token[-4])/4
 
-        np.save(f"checkpoints/bert_token_embeddings_folder/{sentence_idx}", token_embeddings_for_sentence.numpy())
+        np.save(f"checkpoints/bert_token_embeddings/{sentence_idx}", token_embeddings_for_sentence.numpy())

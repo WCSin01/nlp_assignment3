@@ -10,9 +10,11 @@ from functions import pickle_dump, pickle_load
 from process_conllu import ConlluDataset, OneHot
 from utils import calculate_variation_of_information
 
-pos = "xpos"
+pos = "upos"
+epoch_n = 0
 
-parameters_file_path = f"checkpoints/forward_backward_{pos}/epoch5.pkl"
+parameters_file_path = f"checkpoints/forward_backward_{pos}/epoch{epoch_n}.pkl"
+viterbi_file_path = f"checkpoints/viterbi_{pos}.pkl"
 eval_file_path = f"results/eval_hmm_{pos}.csv"
 
 if __name__ == "__main__":
@@ -25,6 +27,8 @@ if __name__ == "__main__":
     elif pos == "xpos":
         pos_set = dataset.xpos_set
         pos_data = dataset.xpos
+    else:
+        raise NotImplementedError
 
     pos_ohe = OneHot(pos_set)
     _, V = parameters.emission.shape
@@ -38,7 +42,7 @@ if __name__ == "__main__":
             encoded_obs_seq[t, 0] = dataset.ohe.get_index(obs_seq[t])
 
         model = hmm.CategoricalHMM(n_components=len(pos_set))
-        model.startprob_ = parameters.pi[0]
+        model.startprob_ = parameters.pi
         model.transmat_ = parameters.transition
         model.emissionprob_ = parameters.emission
 
@@ -46,7 +50,7 @@ if __name__ == "__main__":
         pred_hidden_seqs.append(pred_hidden_seq)
 
     print("saving viterbi...")
-    pickle_dump(pred_hidden_seqs, "checkpoints/viterbi_xpos.pkl")
+    pickle_dump(pred_hidden_seqs, viterbi_file_path)
 
     print("encoding true sequences...")
     encoded_true_hidden_seqs: list[np.ndarray] = []
@@ -58,7 +62,7 @@ if __name__ == "__main__":
         encoded_true_hidden_seqs.append(encoded_true_hidden_seq)
 
     print("evaluating...")
-    f = open("results/eval_hmm.csv", "w")
+    f = open(eval_file_path, "w")
     f.write("v measure,voi,normalised voi\n")
     for pred_seq, true_seq in zip(pred_hidden_seqs, encoded_true_hidden_seqs):
       v_measure = v_measure_score(pred_seq, true_seq)
