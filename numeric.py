@@ -17,7 +17,7 @@ def log_mat_mul(logA: np.ndarray, logB: np.ndarray) -> np.ndarray:
     return logsumexp(log_pairwise_products, axis=1)
 
 
-def log_normalize_exp(log_array: np.ndarray, axis=None) -> np.ndarray:
+def log_normalize(log_array: np.ndarray, axis=None) -> np.ndarray:
     """
     normalize in log space
 
@@ -25,11 +25,15 @@ def log_normalize_exp(log_array: np.ndarray, axis=None) -> np.ndarray:
     :param axis:
     :return: normalized array no longer in log space
     """
-    max_ = np.expand_dims(np.max(log_array, axis=axis), axis=axis)
-    array = np.exp(log_array - np.ma.array(max_, mask=np.isinf(max_)))
-    sum_ = np.sum(array, axis=axis)
-    array = array / np.expand_dims(sum_, axis=axis)
-    return array.filled(fill_value=0)
+    # max_ = np.expand_dims(np.max(log_array, axis=axis), axis=axis)
+    # array = np.exp(log_array - np.ma.array(max_, mask=np.isinf(max_)))
+    # sum_ = np.sum(array, axis=axis)
+    # array = array / np.expand_dims(sum_, axis=axis)
+    # return array.filled(fill_value=0)
+
+    log_sum = np.expand_dims(logsumexp(log_array, axis=axis), axis=axis)
+    log_array = log_array - np.ma.array(log_sum, mask=(np.isinf(log_sum)))
+    return log_array.filled(fill_value=-np.inf)
 
 
 def masked_normalize(array: np.ndarray, axis=None) -> np.ndarray:
