@@ -30,8 +30,8 @@ if __name__ == "__main__":
     pos_ohe = OneHot(pos_set)
     flattened_pos = [pos_ohe.get_index(pos) for pos in flatten(pos_data)]
     bert_cluster = df[df["seed"] == seed_num]["cluster"].to_numpy()
+    print("pos flattened")
 
-    print("calculating scores...")
     f = open(eval_file_path, "w")
     f.write("v measure,voi,normalised voi\n")
     v_measure = v_measure_score(flattened_pos, bert_cluster)

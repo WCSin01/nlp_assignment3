@@ -31,7 +31,7 @@ if __name__ == "__main__":
         print(f"clustered seed {i}")
 
         for token, label in zip(flatten(sentences), kmeans.labels_):
-          # item() to get native py int
-          f.write(f'"{token}",{i},{label.item()}\n')
+            # item() to get native py int
+            f.write(f'"{token}",{i},{label.item()}\n')
         print(f"seed {i} results written")
     f.close()
