@@ -56,7 +56,7 @@ eval_plt.ipynb
 # Expected runtime duration and hardware requirements
 
 * forward backward for upos: 45 min per iteration
-* forward backward for xpos: 1h 25 min per iteration
-* bert token embeddings (GPU): 8 min, 4GB of disk required if compressed
+* forward backward for xpos: 1h 40 min per iteration
+* bert token embeddings (GPU): 8 min, 7GB of disk to unzip, 4GB for only unzipped
 * bert token embeddings (CPU): 30 min
 * k means clustering: 4 min per seed of 50 iterations, 16GB of memory may not be sufficient
