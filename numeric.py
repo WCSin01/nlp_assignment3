@@ -4,7 +4,8 @@ from scipy.special import logsumexp
 
 def log_mat_mul(logA: np.ndarray, logB: np.ndarray) -> np.ndarray:
     """
-
+    Very slow and memory intensive
+    
     :param logA:
     :param logB:
     :return: log(AB). AB is matrix multiplication

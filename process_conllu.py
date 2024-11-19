@@ -122,7 +122,7 @@ class OneHot(Generic[T]):
         self.from_index[len(values)] = "UNK"
 
     def encode(self, value: T):
-        vector = np.zeros(len(self.to_index) + 2)
+        vector = np.zeros(len(self.to_index) + 1)
         if value in self.to_index:
             vector[self.to_index[value]] = 1
         else:
@@ -133,7 +133,7 @@ class OneHot(Generic[T]):
         if value in self.to_index:
             return self.to_index[value]
         else:
-            return len(self.to_index) + 1
+            return len(self.to_index)
 
     def decode(self, vector: np.ndarray):
         """
@@ -143,14 +143,25 @@ class OneHot(Generic[T]):
         """
         index_where_1 = np.where(vector == 1)[0][0]
         return self.from_index[index_where_1]
-
-    def encode_row_log(self, value: T):
-        matrix = np.full((1, len(self.to_index) + 2), -np.inf)
+    
+    def encode_log(self, value: T):
+        vector = np.full(len(self.to_index) + 1, -np.inf)
         if value in self.to_index:
-            matrix[0, self.to_index[value]] = 0
+            vector[self.to_index[value]] = 0
         else:
-            matrix[0, -1] = 0
-        return matrix
+            vector[-1] = 0
+        return vector
+    
+    def encode_row_log(self, value: T):
+        return value
+    
+    # def encode_row_log(self, value: T):
+    #     matrix = np.full((1, len(self.to_index) + 1), -np.inf)
+    #     if value in self.to_index:
+    #         matrix[0, self.to_index[value]] = 0
+    #     else:
+    #         matrix[0, -1] = 0
+    #     return matrix
 
 
 @dataclass

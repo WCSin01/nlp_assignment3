@@ -6,12 +6,12 @@ from hmmlearn import hmm
 from sklearn.metrics.cluster import v_measure_score
 
 from forward_backward_hmm import HMMParameters
-from functions import pickle_dump, pickle_load, flatten
+from functions import flatten, pickle_dump, pickle_load
 from process_conllu import ConlluDataset, OneHot
 from utils import calculate_variation_of_information
 
 pos = "upos"
-epoch_n = 0
+epoch_n = 7
 
 parameters_file_path = f"checkpoints/forward_backward_{pos}/epoch{epoch_n}.pkl"
 viterbi_file_path = f"checkpoints/viterbi_{pos}.pkl"
@@ -68,4 +68,5 @@ if __name__ == "__main__":
     flattened_true = flatten(encoded_true_hidden_seqs)
     v_measure = v_measure_score(flattened_true, flattened_pred)
     variation_of_information, norm_voi = calculate_variation_of_information(flattened_true, flattened_pred)
+    f.write(f"{v_measure},{variation_of_information},{norm_voi}\n")
     f.close()
