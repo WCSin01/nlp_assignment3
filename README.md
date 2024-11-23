@@ -13,8 +13,8 @@ mkdir results
 mkdir checkpoints
 cd checkpoints
 mkdir bert_token_embeddings
-mkdir forward_backward_upos
-mkdir forward_backward_xpos
+mkdir forward_backward_upos_running
+mkdir forward_backward_xpos_running
 ```
 
 # Pipeline
@@ -54,9 +54,9 @@ eval_plt.ipynb
 
 # Expected runtime duration and hardware requirements
 
-Hardware used: i5-10300H
+Hardware used: i5-10300H, GTX 1660 Ti
 
 * forward backward: 4 min per epoch
 * bert token embeddings (GPU): 8 min, 7GB of disk to unzip, 4GB for only unzipped
 * bert token embeddings (CPU): 30 min
-* k means clustering: 4 min per seed of 50 iterations, 16GB of memory may not be sufficient
+* k means clustering: 4 min per seed of 50 iterations
