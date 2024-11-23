@@ -48,15 +48,15 @@ Subtask 3
 
 ```
 eval_hmm.py
-eval_bert_by_seed.py
 eval_bert.py
 eval_plt.ipynb
 ```
 
 # Expected runtime duration and hardware requirements
 
-* forward backward for upos: 45 min per iteration
-* forward backward for xpos: 1h 40 min per iteration
+Hardware used: i5-10300H
+
+* forward backward: 4 min per epoch
 * bert token embeddings (GPU): 8 min, 7GB of disk to unzip, 4GB for only unzipped
 * bert token embeddings (CPU): 30 min
 * k means clustering: 4 min per seed of 50 iterations, 16GB of memory may not be sufficient
