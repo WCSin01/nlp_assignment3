@@ -97,9 +97,8 @@ class HMM(Generic[TypeT]):
                             log_p_j_at_t,
                             log_xi)
 
-                    if j % 500 == 0:
-                        self.save_sequence_checkpoint(i, max_iter, j, new_log_pi, new_log_transition,
-                                                      new_log_emission_T)
+                    if j % 1000 == 0:
+                        print(f"epoch: {i + 1}/{max_iter}, sequence #: {j + 1}/{len(self.dataset.sequences)}")
 
                 new_log_pi = log_normalize(new_log_pi, axis=1)
                 new_log_transition = log_normalize(new_log_transition, axis=1)
@@ -116,7 +115,7 @@ class HMM(Generic[TypeT]):
 
                 pickle_dump(
                     HMMParameters(new_pi, new_transition, new_emission_T.T),
-                    f"{self.save_folder_path}/epoch{i}.pkl")
+                    f"{self.save_folder_path}/epoch{i+1}.pkl")
 
                 if (np.allclose(transition, new_transition) and
                         np.allclose(np.exp(self.log_emission_T), new_emission_T)):

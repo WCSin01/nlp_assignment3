@@ -33,12 +33,13 @@ misc: None
 
 rename bert_token_embedding, sentence_ls
 
+# Profiling
+
+```
+python -m cProfile -o profile.prof <python_file>
+python -m snakeviz profile.prof
+```
+
 # Misc
-
-transition MSE: 4.0879132319868338e-22
-
-has convereged: True
-
-100 iterations, kmeans 6 hours
 
 ~/rds/hpc-work/nlp/logs

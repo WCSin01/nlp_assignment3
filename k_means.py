@@ -6,7 +6,8 @@ from functions import flatten, pickle_load
 from numeric import masked_normalize
 from process_conllu import ConlluDataset
 
-pos = "xpos"
+pos = "upos"
+n_seeds = 5
 
 if __name__ == "__main__":
     if pos == "upos":
@@ -24,14 +25,14 @@ if __name__ == "__main__":
     print("embeddings normalized")
 
     f = open(f"results/k_means_{pos}.csv", "w")
-    f.write(f"word,seed,cluster\n")
-    for i in range(1):
+    f.write(f"seed,word,cluster\n")
+    for i in range(n_seeds):
         # n_tokens x 768
-        kmeans = KMeans(n_clusters=n_clusters, n_init="auto", max_iter=50).fit(word_embeddings)
+        kmeans = KMeans(n_clusters=n_clusters, n_init="auto", max_iter=50, random_state=i).fit(word_embeddings)
         print(f"clustered seed {i}")
 
         for token, label in zip(flatten(sentences), kmeans.labels_):
             # item() to get native py int
-            f.write(f'"{token}",{i},{label.item()}\n')
+            f.write(f'{i},"{token}",{label.item()}\n')
         print(f"seed {i} results written")
     f.close()

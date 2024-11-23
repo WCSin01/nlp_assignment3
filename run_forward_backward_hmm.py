@@ -3,7 +3,7 @@ from forward_backward_hmm import HMMParameters, seed_matrices, HMM
 from functions import pickle_load
 from process_conllu import ConlluDataset, OneHot, Dataset
 
-# 35-45 min per iteration
+
 if __name__ == "__main__":
     dataset: ConlluDataset = pickle_load("checkpoints/dataset.pkl")
 
@@ -12,8 +12,8 @@ if __name__ == "__main__":
 
     # parameters: HMMParameters = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size)
 
-    parameters: HMMParameters = pickle_load("checkpoints/forward_backward_upos/epoch6.pkl")
+    parameters: HMMParameters = pickle_load("checkpoints/forward_backward_xpos/epoch170.pkl")
 
-    hmm = HMM(parameters, dataset, "checkpoints/forward_backward_upos_running")
-    has_converged = hmm.forward_backward(max_iter=1)
-    print(f"has convereged: {has_converged}")
+    hmm = HMM(parameters, dataset, "checkpoints/forward_backward_xpos_running")
+    has_converged = hmm.forward_backward(max_iter=29)
+    print(f"has converged: {has_converged}")
