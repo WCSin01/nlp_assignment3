@@ -29,17 +29,9 @@ misc: None
     # assert np.allclose(emission.sum(axis=1), 1)
 ```
 
-# TODO
-
-rename bert_token_embedding, sentence_ls
-
 # Profiling
 
 ```
 python -m cProfile -o profile.prof <python_file>
 python -m snakeviz profile.prof
 ```
-
-# Misc
-
-~/rds/hpc-work/nlp/logs
