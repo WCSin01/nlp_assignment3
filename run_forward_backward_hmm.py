@@ -10,10 +10,10 @@ if __name__ == "__main__":
     # exclude from training long sentences
     dataset.sequences = [seq for seq in dataset.sequences if len(seq) < 70]
 
-    # parameters: HMMParameters = seed_matrices(len(dataset.upos_set), dataset.vocabulary_size)
+    parameters: HMMParameters = seed_matrices(len(dataset.xpos_set), dataset.vocabulary_size)
 
-    parameters: HMMParameters = pickle_load("checkpoints/forward_backward_xpos/epoch170.pkl")
+    # parameters: HMMParameters = pickle_load("checkpoints/forward_backward_xpos/epoch170.pkl")
 
     hmm = HMM(parameters, dataset, "checkpoints/forward_backward_xpos_running")
-    has_converged = hmm.forward_backward(max_iter=29)
+    has_converged = hmm.forward_backward(max_iter=200)
     print(f"has converged: {has_converged}")

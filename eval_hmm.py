@@ -7,11 +7,12 @@ from functions import flatten, pickle_load, pickle_dump
 from process_conllu import ConlluDataset, OneHot
 from utils import calculate_variation_of_information
 
-pos = "xpos"
+pos = "upos"
+filter_count = 1
 
 epochs = [1] + list(range(20, 210, 20))
-
-eval_file_path = f"results/eval_hmm_{pos}.csv"
+eval_file_path = f"results/eval_hmm_{pos}_{filter_count}.csv"
+viterbi_file_path = f"results/viterbi_{pos}_{filter_count}.pkl"
 
 if __name__ == "__main__":
     dataset: ConlluDataset = pickle_load("checkpoints/dataset.pkl")
@@ -31,7 +32,7 @@ if __name__ == "__main__":
     f = open(eval_file_path, "w")
     f.write("epoch,v measure,voi,normalised voi\n")
     for epoch in epochs:
-        parameters_file_path = f"checkpoints/forward_backward_{pos}/epoch{epoch}.pkl"
+        parameters_file_path = f"checkpoints/forward_backward_{pos}/{filter_count}/epoch{epoch}.pkl"
         parameters: HMMParameters = pickle_load(parameters_file_path)
 
         pred_hidden_seqs = []
@@ -48,6 +49,9 @@ if __name__ == "__main__":
 
             pred_hidden_seq = model.predict(encoded_obs_seq)
             pred_hidden_seqs.append(pred_hidden_seq)
+
+        if epoch == epochs[-1]:
+            pickle_dump(pred_hidden_seqs, )
         print("viterbi done")
 
         encoded_true_hidden_seqs: list[np.ndarray] = []
@@ -58,8 +62,6 @@ if __name__ == "__main__":
                 encoded_true_hidden_seq[t] = pos_ohe.get_index(true_hidden_seq[t])
             encoded_true_hidden_seqs.append(encoded_true_hidden_seq)
 
-        if epoch == epochs[-1]:
-            pickle_dump(encoded_true_hidden_seqs, f"results/viterbi_{pos}.pkl")
         print("true sequence encoded")
 
         flattened_pred = flatten(pred_hidden_seqs)

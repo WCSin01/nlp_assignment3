@@ -54,7 +54,13 @@ class ConlluProcessor:
         return sentences
 
     @staticmethod
-    def process_conllu_for_hmm(file_path: str):
+    def process_conllu_for_hmm(file_path: str, filter_count: int):
+        """
+
+        :param file_path:
+        :param filter_count: keep word in vocabulary if count > filter_count
+        :return:
+        """
         f = open(file_path, "r")
         data = f.read()
         data = conllu.parse(data)
@@ -94,7 +100,7 @@ class ConlluProcessor:
             xpos.append(sentence_xpos)
 
         # remove low counts
-        filtered_words = [word for word in word_counts if word_counts[word] > 17]
+        filtered_words = [word for word in word_counts if word_counts[word] > filter_count]
         ohe = OneHot(filtered_words)
         return ConlluDataset(sentences, ohe, upos, xpos, upos_set, xpos_set, n_tokens)
 
